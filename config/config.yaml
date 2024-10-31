@@ -1,0 +1,34 @@
+providers:
+  groq:
+    model: llama-3.1-8b-instant
+    temperature: 0
+    # Altri parametri specifici per Groq...
+    
+  openai:
+    model: gpt-4o-mini
+    temperature: 0
+    
+graph_settings:
+  # Impostazioni per l'estrazione delle informazioni
+  extraction:
+    min_confidence: 0.7
+    supported_entities:
+      - interests
+      - professions
+      - skills
+      - opinions
+      - relationships
+      - preferences
+    
+  # Impostazioni per la costruzione del grafo
+  graph:
+    node_types:
+      - Person
+      - Interest
+      - Skill
+      - Opinion
+    relationship_types:
+      - HAS_INTEREST
+      - HAS_SKILL
+      - HAS_OPINION
+      - KNOWS

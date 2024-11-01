@@ -1,8 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { ForceGraph2D } from "react-force-graph";
 
 const KnowledgeGraph = ({ data }) => {
-  const graphData = {
+  const graphData = useMemo(() => ({
     nodes: data.nodes.map(node => ({
       ...node,
       color: getNodeColor(node.type),
@@ -15,7 +15,7 @@ const KnowledgeGraph = ({ data }) => {
       weight: edge.weight,
       type: edge.type
     }))
-  };
+  }), [data]);
 
   function getNodeColor(type) {
     const colors = {
@@ -36,8 +36,93 @@ const KnowledgeGraph = ({ data }) => {
     console.log('Node details:', node);
   }, []);
 
+  const drawLink = useCallback((link, ctx, globalScale) => {
+    const start = link.source;
+    const end = link.target;
+
+    // Calculate control points for a quadratic curve
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Make the curve higher for longer distances
+    const curvature = Math.min(0.2, 30 / distance);
+    const midX = (start.x + end.x) / 2;
+    const midY = (start.y + end.y) / 2;
+    
+    // Calculate normal vector for curve control point
+    const nx = -dy;
+    const ny = dx;
+    const normalization = Math.sqrt(nx * nx + ny * ny);
+    
+    // Control point
+    const cpX = midX + (nx / normalization) * distance * curvature;
+    const cpY = midY + (ny / normalization) * distance * curvature;
+
+    // Draw curved path
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(cpX, cpY, end.x, end.y);
+    ctx.strokeStyle = `rgba(153, 153, 153, ${Math.max(0.2, link.weight)})`;
+    ctx.lineWidth = Math.max(0.5, link.weight * 2);
+    ctx.stroke();
+
+    // Draw arrow at the end
+    const arrowLength = 6;
+    const arrowWidth = 4;
+    const angle = Math.atan2(end.y - cpY, end.x - cpX);
+    
+    ctx.beginPath();
+    ctx.moveTo(end.x, end.y);
+    ctx.lineTo(
+      end.x - arrowLength * Math.cos(angle - Math.PI / 6),
+      end.y - arrowLength * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.lineTo(
+      end.x - arrowLength * Math.cos(angle + Math.PI / 6),
+      end.y - arrowLength * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fillStyle = '#999';
+    ctx.fill();
+
+    // Calculate label position along the curve
+    const labelX = cpX;
+    const labelY = cpY - 5;
+
+    // Draw label background
+    const type = link.type;
+    const weight = link.weight.toFixed(2);
+    ctx.font = '3px sans-serif';
+    const typeWidth = ctx.measureText(type).width;
+    const weightWidth = ctx.measureText(weight).width;
+    const padding = 2;
+
+    // Draw backgrounds for both labels
+    ctx.fillStyle = 'white';
+    ctx.fillRect(
+      labelX - typeWidth/2 - padding,
+      labelY - 6,
+      typeWidth + padding * 2,
+      5
+    );
+    ctx.fillRect(
+      labelX - weightWidth/2 - padding,
+      labelY + 1,
+      weightWidth + padding * 2,
+      5
+    );
+
+    // Draw labels
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#666';
+    ctx.fillText(type, labelX, labelY - 4);
+    ctx.fillText(weight, labelX, labelY + 4);
+  }, []);
+
   return (
-    <div className="w-full h-screen bg-gray-50">
+    <div className="w-full bg-gray-50">
       <div className="p-4">
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-2 mb-4">
@@ -46,7 +131,7 @@ const KnowledgeGraph = ({ data }) => {
             </span>
           </div>
           
-          <div className="h-[600px] border rounded-lg overflow-hidden">
+          <div className="h-96 border rounded-lg overflow-hidden">
             <ForceGraph2D
               graphData={graphData}
               nodeLabel={node => `${node.type}: ${node.name}\nAttributes: ${JSON.stringify(node.attributes, null, 2)}`}
@@ -67,64 +152,14 @@ const KnowledgeGraph = ({ data }) => {
                   ctx.fillText(label, node.x, node.y + 8);
                 }
               }}
-              linkCanvasObject={(link, ctx) => {
-                const start = link.source;
-                const end = link.target;
-
-                // Draw thin line
-                ctx.beginPath();
-                ctx.moveTo(start.x, start.y);
-                ctx.lineTo(end.x, end.y);
-                ctx.strokeStyle = '#999999';
-                ctx.lineWidth = 0.5; // Linea molto sottile
-                ctx.stroke();
-
-                // Calculate middle point for the weight label
-                const midX = (start.x + end.x) / 2;
-                const midY = (start.y + end.y) / 2;
-
-                // Draw background for better readability
-                const weight = link.weight.toFixed(2);
-                ctx.font = '3px sans-serif';
-                const textWidth = ctx.measureText(weight).width;
-                ctx.fillStyle = 'white';
-                ctx.fillRect(
-                  midX - textWidth/2 - 1,
-                  midY - 2,
-                  textWidth + 2,
-                  4
-                );
-
-                // Draw relationship type and weight
-                ctx.font = '3px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#666';
-                
-                // Draw weight number
-                ctx.fillText(weight, midX, midY);
-
-                // Calculate angle for relationship type
-                const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                const dist = Math.sqrt(
-                  Math.pow(end.x - start.x, 2) + 
-                  Math.pow(end.y - start.y, 2)
-                );
-
-                // Draw relationship type if there's enough space
-                if (dist > 30) {
-                  ctx.save();
-                  ctx.translate(midX, midY);
-                  ctx.rotate(angle);
-                  ctx.fillText(
-                    link.type,
-                    0,
-                    -4 // Sposta il testo leggermente sopra la linea
-                  );
-                  ctx.restore();
-                }
-              }}
+              linkCanvasObject={drawLink}
+              linkDirectionalParticles={2}
+              linkDirectionalParticleSpeed={0.005}
               backgroundColor="#ffffff"
+              d3AlphaDecay={0.02}
+              d3VelocityDecay={0.3}
+              cooldownTicks={100}
+              linkDistance={100}
             />
           </div>
 

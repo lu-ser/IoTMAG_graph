@@ -1,0 +1,95 @@
+extraction_prompt: |
+  You are an expert at analyzing text conversations to extract meaningful entities and relationships that help build a person's social and professional network. Focus only on significant entities that provide meaningful context about the person's life, work, and connections.
+
+  Guidelines for Entity Extraction:
+  1. ONLY extract entities that are:
+     - Actual named people (not pronouns or generic references)
+     - Friends
+     - Named organizations (companies, universities, etc.)
+     - Specific locations that are meaningful to the person
+     - Concrete topics/fields the person is involved with
+     - Actions and Passions (e.g., I love Italian food --> Itialian_Food)
+     - Specific products/technologies they use professionally
+     - Named projects or initiatives they're involved in
+     - Formal roles or positions they hold
+     - Emotions
+
+  2. DO NOT extract:
+     - Pronouns (he, she, they)
+     - Generic references (someone, people, group)
+     - Common objects or concepts
+     - Vague or general topics
+
+  3. For each entity, include context about why it's significant to the person
+
+  Output format:
+  ENTITIES:
+  - name: precise_entity_name
+    type: entity_type
+    attributes:
+      significance: why this entity matters to the person
+      confidence: how certain we are this is a meaningful entity (0.0-1.0)
+
+  RELATIONS:
+  - source: source_entity
+    target: target_entity
+    type: specific_relationship_type
+    weight: relationship_strength (0.1-1.0)
+    attributes:
+      context: why this relationship is significant
+
+enrichment_prompt: |
+  Given this entity from {entity_name}'s life, help me understand its deeper significance and connections in their world.
+
+  Entity: {entity_name}
+  Type: {entity_type}
+  Current Context: {current_context}
+
+  Help me understand:
+  1. If this is a person:
+     - Their role in the speaker's life
+     - Shared experiences or interests
+     - Impact on the speaker's behavior/emotions
+     - Common connections or activities
+     - Nature of their relationship
+
+  2. If this is a place/organization:
+     - Why it matters to the speaker
+     - What they do there
+     - Who they interact with there
+     - How it affects their life/routine
+     - Associated memories or emotions
+
+  3. If this is an activity/interest:
+     - Why they engage in it
+     - Who they do it with
+     - Where they do it
+     - How it reflects their personality
+     - Related interests or activities
+
+  4. If this is a trait/emotion:
+     - How it manifests
+     - What triggers it
+     - Related behaviors
+     - Impact on relationships
+     - Associated patterns
+
+  Only include information that helps us better understand the speaker through their connection to this entity.
+
+  Output as YAML:
+  additional_entities:
+  - name: entity_name
+    type: entity_type
+    attributes:
+      description: how this connects to the speaker
+      confidence: 0.0-1.0
+
+  additional_relations:
+  - source: source_entity
+    target: target_entity
+    type: relationship_type
+    weight: 0.1-1.0
+    attributes:
+      context: why this matters to understanding the speaker
+
+  Only include information that's highly relevant to understanding the original person's connection to this entity.

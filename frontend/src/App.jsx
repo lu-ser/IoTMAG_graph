@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import KnowledgeGraph from './components/KnowledgeGraph';
 
+// Rimuovi eventuali slash finali dall'URL
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || 'http://localhost:8000';
+
 function App() {
   const [graphData, setGraphData] = useState(null);
   const [message, setMessage] = useState('');
@@ -39,15 +42,28 @@ function App() {
     try {
       setError(null);
       console.log(`Fetching graph data with time_filter=${timeFilter}`);
-      const response = await fetch(`http://localhost:8000/graph?time_filter=${timeFilter}`);
+      const response = await fetch(`${API_URL}/graph?time_filter=${timeFilter}`, {
+        headers: {                               // <-- MODIFICA QUI
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true'   // <-- AGGIUNGI QUESTA RIGA
+        }
+      });
+
       if (!response.ok) {
+        const text = await response.text();
+        console.log('Error response text:', text);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
-      console.log('Received graph data:', data);
+
+      const text = await response.text();
+      console.log('Response text:', text);
+
+      const data = JSON.parse(text);
+      console.log('Parsed data:', data);
+      
       setGraphData(data);
     } catch (error) {
-      console.error('Error fetching graph data:', error);
+      console.error('Full error:', error);
       setError(error.message);
     }
   };
@@ -61,10 +77,12 @@ function App() {
       const timestamp = getTimestamp(messageTime).toISOString();
       console.log('Sending message with timestamp:', timestamp);
       
-      const response = await fetch('http://localhost:8000/process-message', {
+      const response = await fetch(`${API_URL}/process-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true'   // <-- AGGIUNGI QUESTA RIGA
         },
         body: JSON.stringify({ 
           text: message,

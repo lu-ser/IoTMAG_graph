@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { ForceGraph2D } from "react-force-graph";
 
 const KnowledgeGraph = ({ data }) => {
@@ -6,7 +6,9 @@ const KnowledgeGraph = ({ data }) => {
     nodes: data.nodes.map(node => ({
       ...node,
       color: getNodeColor(node.type),
-      size: 6
+      size: 6,
+      x: Math.random() * 200 - 100,
+      y: Math.random() * 200 - 100
     })),
     links: data.edges.map(edge => ({
       source: edge.source,
@@ -32,29 +34,24 @@ const KnowledgeGraph = ({ data }) => {
     return colors[type?.toLowerCase()] || colors.default;
   }
 
-  const handleNodeClick = useCallback(node => {
-    console.log('Node details:', node);
-  }, []);
-
   return (
     <div className="w-full h-screen bg-gray-50">
       <div className="p-4">
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center mb-4">
             <span className="text-sm text-gray-600">
-              Click nodes to see details. Edge labels show relationship type and weight.
+              Trascina i nodi per spostarli. Le posizioni verranno mantenute.
             </span>
           </div>
           
-          <div className="h-[600px] border rounded-lg overflow-hidden">
+          <div className="h-96 border rounded-lg overflow-hidden">
             <ForceGraph2D
               graphData={graphData}
-              nodeLabel={node => `${node.type}: ${node.name}\nAttributes: ${JSON.stringify(node.attributes, null, 2)}`}
+              nodeLabel={node => `${node.type}: ${node.name}`}
               linkLabel={link => link.label}
-              onNodeClick={handleNodeClick}
               nodeCanvasObject={(node, ctx, globalScale) => {
                 ctx.beginPath();
-                ctx.arc(node.x, node.y, node.size, 0, 2 * Math.PI, false);
+                ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI, false);
                 ctx.fillStyle = node.color;
                 ctx.fill();
 
@@ -71,73 +68,101 @@ const KnowledgeGraph = ({ data }) => {
                 const start = link.source;
                 const end = link.target;
 
-                // Draw thin line
+                // Disegna la linea
                 ctx.beginPath();
                 ctx.moveTo(start.x, start.y);
                 ctx.lineTo(end.x, end.y);
-                ctx.strokeStyle = '#999999';
-                ctx.lineWidth = 0.5; // Linea molto sottile
+                ctx.strokeStyle = '#666666';
+                ctx.lineWidth = 0.5;
                 ctx.stroke();
 
-                // Calculate middle point for the weight label
+                // Calcola il punto medio per le etichette
                 const midX = (start.x + end.x) / 2;
                 const midY = (start.y + end.y) / 2;
 
-                // Draw background for better readability
-                const weight = link.weight.toFixed(2);
-                ctx.font = '3px sans-serif';
-                const textWidth = ctx.measureText(weight).width;
-                ctx.fillStyle = 'white';
-                ctx.fillRect(
-                  midX - textWidth/2 - 1,
-                  midY - 2,
-                  textWidth + 2,
-                  4
-                );
-
-                // Draw relationship type and weight
-                ctx.font = '3px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#666';
-                
-                // Draw weight number
-                ctx.fillText(weight, midX, midY);
-
-                // Calculate angle for relationship type
                 const angle = Math.atan2(end.y - start.y, end.x - start.x);
                 const dist = Math.sqrt(
                   Math.pow(end.x - start.x, 2) + 
                   Math.pow(end.y - start.y, 2)
                 );
 
-                // Draw relationship type if there's enough space
+                // Disegna il tipo di relazione
                 if (dist > 30) {
                   ctx.save();
                   ctx.translate(midX, midY);
                   ctx.rotate(angle);
-                  ctx.fillText(
-                    link.type,
-                    0,
-                    -4 // Sposta il testo leggermente sopra la linea
+                  
+                  ctx.font = '3px sans-serif';
+                  const typeWidth = ctx.measureText(link.type).width;
+                  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                  ctx.fillRect(
+                    -typeWidth/2 - 2,
+                    -8,
+                    typeWidth + 4,
+                    6
                   );
+                  
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillStyle = '#666';
+                  ctx.fillText(link.type, 0, -5);
+                  
                   ctx.restore();
                 }
+
+                // Disegna il peso
+                const weight = link.weight.toFixed(2);
+                ctx.font = '3px sans-serif';
+                const weightWidth = ctx.measureText(weight).width;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(
+                  midX - weightWidth/2 - 2,
+                  midY - 2,
+                  weightWidth + 4,
+                  6
+                );
+                
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#666';
+                ctx.fillText(weight, midX, midY);
               }}
               backgroundColor="#ffffff"
+              enableNodeDrag={true}
+              enableZoom={true}
+              enablePanInteraction={true}
+              cooldownTime={0}
+              onNodeDragEnd={node => {
+                node.fx = node.x;
+                node.fy = node.y;
+              }}
+              onEngineStop={() => {
+                graphData.nodes.forEach(node => {
+                  if (node.fx === undefined) {
+                    node.fx = node.x;
+                    node.fy = node.y;
+                  }
+                });
+              }}
+              d3VelocityDecay={0.9}
+              warmupTicks={0}
+              d3Force="charge"
+              d3ForceStrength={-200}
+              linkDistance={50}
             />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-4">
             {Object.entries({
-              person: 'People',
-              topic: 'Topics',
-              interest: 'Interests',
-              activity: 'Activities',
-              skill: 'Skills',
-              tool: 'Tools',
-              concept: 'Concepts',
-              organization: 'Organizations'
+              person: 'Persone',
+              topic: 'Argomenti',
+              interest: 'Interessi',
+              activity: 'Attività',
+              skill: 'Competenze',
+              tool: 'Strumenti',
+              concept: 'Concetti',
+              organization: 'Organizzazioni'
             }).map(([type, label]) => (
               <div key={type} className="flex items-center gap-2">
                 <div 

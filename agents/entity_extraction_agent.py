@@ -102,6 +102,7 @@ class EntityExtractionAgent(LangChainAgent):
           target: entity_name
           type: relationship_type
           weight: 0.8
+          THE TYPE SHOULD WITHIN THE FOLLOWING GROUP: person, interest, activity, skill, tool, concept, organization
         """
 
         super().__init__(provider="groq", system=system_prompt)

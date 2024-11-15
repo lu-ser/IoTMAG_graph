@@ -8,7 +8,7 @@ function App() {
   const [graphData, setGraphData] = useState(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [timeFilter, setTimeFilter] = useState('now');
+  const [timeFilter, setTimeFilter] = useState('1m');
   const [messageTime, setMessageTime] = useState('now');
   const [error, setError] = useState(null);
 
@@ -134,7 +134,37 @@ function App() {
                   ))}
                 </select>
               </div>
+              <div className="flex items-center gap-4">
+
+                <button
+                  onClick={async () => {
+                    try {
+                      setError(null);
+                      const response = await fetch(`${API_URL}/reset`, {
+                        method: 'POST',
+                        headers: {
+                          'Accept': 'application/json',
+                          'ngrok-skip-browser-warning': 'true'
+                        }
+                      });
+                      
+                      if (!response.ok) {
+                        throw new Error('Failed to reset graph');
+                      }
+                      
+                      await fetchGraphData();
+                    } catch (error) {
+                      console.error('Error resetting graph:', error);
+                      setError(error.message);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                >
+                  Reset Graph
+                </button>
+              </div>
             </div>
+            
           </div>
         </div>
       </header>
